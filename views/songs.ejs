@@ -1,15 +1,15 @@
-<head>
-    <title><%= title %> | Music Hub</title>
-    <link rel="stylesheet" href="/public/styles.css">
-</head>
-<h1>Songs List</h1>
-<ul>
-  <% songs.forEach(song => { %>
-    <li><a href="/songs/<%= song._id %>"><%= song.name %> - <%= song.artist %></a></li>
-  <% }) %>
-</ul>
-<a href="/add-song">Add New Song</a>
-<a href="/">Home</a>
-<a href="/about">About</a>
-<a href="/contact">Contact</a>
-<a href="/song-details">Song-details</a>
+<%- include('layout', { body: `
+<h2>All Songs</h2>
+<div class="grid">
+${songs.map(s => `
+<div class="card">
+<h3>${s.title}</h3>
+<p>${s.artist}</p>
+<a class="btn" href="/edit/${s._id}">Edit</a>
+<form method="POST" action="/delete/${s._id}">
+<button class="danger">Delete</button>
+</form>
+</div>
+`).join('')}
+</div>
+` }) %>

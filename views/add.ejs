@@ -1,0 +1,8 @@
+<%- include('layout', { body: `
+<h2>Add Song</h2>
+<form method="POST" action="/add" class="card">
+<input name="title" placeholder="Song title" required />
+<input name="artist" placeholder="Artist" required />
+<button>Add Song</button>
+</form>
+` }) %>

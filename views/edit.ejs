@@ -1,0 +1,8 @@
+<%- include('layout', { body: `
+<h2>Edit Song</h2>
+<form method="POST" action="/edit/${song._id}" class="card">
+<input name="title" value="${song.title}" required />
+<input name="artist" value="${song.artist}" required />
+<button>Save</button>
+</form>
+` }) %>

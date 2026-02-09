@@ -1,69 +1,79 @@
-require('dotenv').config();
-const express = require('express');
-const { MongoClient, ObjectId } = require('mongodb');
+const express = require("express");
+const { MongoClient, ObjectId } = require("mongodb");
+require("dotenv").config();
+
+
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Connect to MongoDB
+
+app.use(express.urlencoded({ extended: true }));
+app.use(express.json());
+app.use(express.static("public"));
+
+
+app.set("view engine", "ejs");
+app.set("views", "views");
+
+
 const client = new MongoClient(process.env.MONGO_URI);
+let db;
+
 
 async function connectDB() {
-  try {
-    await client.connect();
-    console.log('✅ Connected to MongoDB');
-  } catch (err) {
-    console.error('❌ MongoDB connection error:', err);
-  }
+await client.connect();
+db = client.db("music-hub");
+console.log("MongoDB connected");
 }
 connectDB();
 
-// Middleware
-app.use(express.static('public'));
-app.use(express.urlencoded({ extended: true }));
-app.set('view engine', 'ejs');
 
-// Routes
-
-// Home
-app.get('/', (req, res) => res.render('index', { title: 'Home' }));
-
-// About
-app.get('/about', (req, res) => res.render('about', { title: 'About' }));
-
-// Contact
-app.get('/contact', (req, res) => res.render('contact', { title: 'Contact' }));
-
-// Songs list
-app.get('/songs', async (req, res) => {
-  const songs = await client.db('music-hub').collection('songs').find({}).toArray();
-  res.render('songs', { title: 'Songs', songs });
+// ROUTES
+app.get("/", (req, res) => {
+res.render("index");
 });
 
-// Song details
-app.get('/songs/:id', async (req, res) => {
-  const song = await client.db('music-hub').collection('songs')
-    .findOne({ _id: new ObjectId(req.params.id) });
-  if (!song) return res.status(404).send('Song not found');
-  res.render('song-details', { title: song.name, song });
+
+app.get("/songs", async (req, res) => {
+const songs = await db.collection("songs").find().toArray();
+res.render("songs", { songs });
 });
 
-// Add Song page
-app.get('/add-song', (req, res) => res.render('add-song', { title: 'Add Song' }));
 
-// Handle Add Song form submission
-app.post('/add-song', async (req, res) => {
-  const { name, artist, album, year } = req.body;
-  const songsCollection = client.db('music-hub').collection('songs');
-  await songsCollection.insertOne({ name, artist, album, year });
-  res.redirect('/songs'); // go to songs list after adding
+app.get("/add", (req, res) => {
+res.render("add");
 });
 
-// Contact form submission
-app.post('/contact', (req, res) => {
-  const { name, email, message } = req.body;
-  console.log(`Contact form submitted: ${name}, ${email}, ${message}`);
-  res.send('Thank you for contacting us!');
+
+app.post("/add", async (req, res) => {
+const { title, artist } = req.body;
+await db.collection("songs").insertOne({ title, artist });
+res.redirect("/songs");
 });
 
-// Start server
-app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+
+app.get("/edit/:id", async (req, res) => {
+const song = await db.collection("songs").findOne({ _id: new ObjectId(req.params.id) });
+res.render("edit", { song });
+});
+
+
+app.post("/edit/:id", async (req, res) => {
+const { title, artist } = req.body;
+await db.collection("songs").updateOne(
+{ _id: new ObjectId(req.params.id) },
+{ $set: { title, artist } }
+);
+res.redirect("/songs");
+});
+
+
+app.post("/delete/:id", async (req, res) => {
+await db.collection("songs").deleteOne({ _id: new ObjectId(req.params.id) });
+res.redirect("/songs");
+});
+
+
+app.listen(PORT, () => {
+console.log("Server running on port", PORT);
+});
