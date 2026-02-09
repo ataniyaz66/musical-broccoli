@@ -8,7 +8,6 @@
 <body>
   <nav class="nav">
     <a class="brand" href="/">🎵 MusicHub</a>
-
     <div class="links">
       <a href="/songs">Songs</a>
 
@@ -18,6 +17,7 @@
           <button class="btn small" type="submit">Logout (<%= user.username %>)</button>
         </form>
       <% } else { %>
+        <a class="btn small ghost" href="/register">Sign up</a>
         <a class="btn small" href="/login">Login</a>
       <% } %>
     </div>

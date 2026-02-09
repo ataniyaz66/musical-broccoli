@@ -9,6 +9,7 @@ require("dotenv").config();
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+// middleware
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 app.use(express.static("public"));
@@ -16,6 +17,7 @@ app.use(express.static("public"));
 app.set("view engine", "ejs");
 app.set("views", "views");
 
+// DB
 const client = new MongoClient(process.env.MONGO_URI);
 let db;
 
@@ -29,7 +31,7 @@ connectDB().catch((e) => {
   process.exit(1);
 });
 
-// Sessions (cookie stores ONLY session id)
+// sessions
 app.use(
   session({
     name: "sid",
@@ -40,39 +42,43 @@ app.use(
       mongoUrl: process.env.MONGO_URI,
       dbName: "music-hub",
       collectionName: "sessions",
-      ttl: 60 * 60 * 24 * 7, // 7 days
+      ttl: 60 * 60 * 24 * 7
     }),
     cookie: {
-      httpOnly: true, // REQUIRED
-      secure: process.env.NODE_ENV === "production", // recommended in prod
+      httpOnly: true, // required
+      secure: process.env.NODE_ENV === "production", // recommended
       sameSite: "lax",
-      maxAge: 1000 * 60 * 60 * 24 * 7,
-    },
+      maxAge: 1000 * 60 * 60 * 24 * 7
+    }
   })
 );
 
-// expose user to EJS
+// expose user to templates
 app.use((req, res, next) => {
   res.locals.user = req.session.user || null;
   next();
 });
 
-// Auth middleware
+// auth middleware
 function requireAuth(req, res, next) {
   if (!req.session.user) return res.status(401).redirect("/login");
   next();
 }
 
-// Pages
-app.get("/", (req, res) => res.render("index"));
+// ---------- PAGES ----------
+app.get("/", (req, res) => {
+  res.render("index");
+});
 
 app.get("/songs", async (req, res) => {
   const songs = await db.collection("songs").find().sort({ _id: -1 }).toArray();
   res.render("songs", { songs });
 });
 
-// ADD (protected)
-app.get("/add", requireAuth, (req, res) => res.render("add", { errors: [], values: {} }));
+// ---------- SONGS CRUD (protected write) ----------
+app.get("/add", requireAuth, (req, res) => {
+  res.render("add", { errors: [], values: {} });
+});
 
 app.post(
   "/add",
@@ -84,7 +90,7 @@ app.post(
     body("genre").trim().isLength({ min: 1, max: 60 }).withMessage("Genre is required"),
     body("year").optional({ checkFalsy: true }).isInt({ min: 1900, max: 2100 }).withMessage("Year must be valid"),
     body("durationSec").optional({ checkFalsy: true }).isInt({ min: 1, max: 3600 }).withMessage("Duration must be valid"),
-    body("language").trim().isLength({ min: 1, max: 40 }).withMessage("Language is required"),
+    body("language").trim().isLength({ min: 1, max: 40 }).withMessage("Language is required")
   ],
   async (req, res) => {
     const result = validationResult(req);
@@ -94,7 +100,7 @@ app.post(
       return res.status(400).render("add", { errors: result.array(), values });
     }
 
-    const doc = {
+    await db.collection("songs").insertOne({
       title: values.title,
       artist: values.artist,
       album: values.album,
@@ -104,15 +110,13 @@ app.post(
       language: values.language,
       explicit: values.explicit === "on",
       createdAt: new Date(),
-      createdBy: req.session.user.username,
-    };
+      createdBy: req.session.user.username
+    });
 
-    await db.collection("songs").insertOne(doc);
     res.redirect("/songs");
   }
 );
 
-// EDIT (protected)
 app.get("/edit/:id", requireAuth, async (req, res) => {
   const song = await db.collection("songs").findOne({ _id: new ObjectId(req.params.id) });
   if (!song) return res.status(404).send("Not found");
@@ -129,7 +133,7 @@ app.post(
     body("genre").trim().isLength({ min: 1, max: 60 }).withMessage("Genre is required"),
     body("year").optional({ checkFalsy: true }).isInt({ min: 1900, max: 2100 }).withMessage("Year must be valid"),
     body("durationSec").optional({ checkFalsy: true }).isInt({ min: 1, max: 3600 }).withMessage("Duration must be valid"),
-    body("language").trim().isLength({ min: 1, max: 40 }).withMessage("Language is required"),
+    body("language").trim().isLength({ min: 1, max: 40 }).withMessage("Language is required")
   ],
   async (req, res) => {
     const result = validationResult(req);
@@ -153,8 +157,8 @@ app.post(
           language: req.body.language,
           explicit: req.body.explicit === "on",
           updatedAt: new Date(),
-          updatedBy: req.session.user.username,
-        },
+          updatedBy: req.session.user.username
+        }
       }
     );
 
@@ -162,18 +166,20 @@ app.post(
   }
 );
 
-// DELETE (protected)
 app.post("/delete/:id", requireAuth, async (req, res) => {
   await db.collection("songs").deleteOne({ _id: new ObjectId(req.params.id) });
   res.redirect("/songs");
 });
 
-// AUTH
+// ---------- AUTH ----------
 app.get("/login", (req, res) => res.render("login", { error: null }));
 
 app.post(
   "/login",
-  [body("username").trim().isLength({ min: 3, max: 30 }), body("password").isLength({ min: 4, max: 200 })],
+  [
+    body("username").trim().isLength({ min: 3, max: 30 }),
+    body("password").isLength({ min: 6, max: 200 })
+  ],
   async (req, res) => {
     const result = validationResult(req);
     if (!result.isEmpty()) return res.status(400).render("login", { error: "Invalid credentials" });
@@ -195,4 +201,53 @@ app.post("/logout", (req, res) => {
   req.session.destroy(() => res.clearCookie("sid").redirect("/"));
 });
 
-app.listen(PORT, () => console.log(`✅ Server running on ${PORT}`));
+// ---------- REGISTER (SIGN UP) ----------
+app.get("/register", (req, res) => {
+  res.render("register", { error: null, values: {} });
+});
+
+app.post(
+  "/register",
+  [
+    body("username")
+      .trim()
+      .isLength({ min: 3, max: 30 })
+      .withMessage("Username must be 3-30 characters")
+      .matches(/^[a-zA-Z0-9_]+$/)
+      .withMessage("Only letters, numbers, underscore allowed"),
+    body("password")
+      .isLength({ min: 6, max: 200 })
+      .withMessage("Password must be at least 6 characters")
+  ],
+  async (req, res) => {
+    const result = validationResult(req);
+    const values = { username: req.body.username };
+
+    if (!result.isEmpty()) {
+      return res.status(400).render("register", {
+        error: result.array().map(e => e.msg).join(". "),
+        values
+      });
+    }
+
+    const { username, password } = req.body;
+
+    const exists = await db.collection("users").findOne({ username });
+    if (exists) return res.status(409).render("register", { error: "Username already exists", values });
+
+    const passwordHash = await bcrypt.hash(password, 10);
+
+    await db.collection("users").insertOne({
+      username,
+      passwordHash,
+      role: "user",
+      createdAt: new Date()
+    });
+
+    // auto login after signup
+    req.session.user = { username, role: "user" };
+    res.redirect("/songs");
+  }
+);
+
+app.listen(PORT, () => console.log(`✅ Server running on port ${PORT}`));

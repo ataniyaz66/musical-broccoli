@@ -1,0 +1,22 @@
+<%- include('layout', { body: `
+  <div class="card wide">
+    <h2>Create Account</h2>
+
+    ${error ? `<div class="alert">${error}</div>` : ``}
+
+    <form method="POST" action="/register" class="form">
+      <label>Username</label>
+      <input name="username" value="${values.username || ""}" required minlength="3" maxlength="30" />
+
+      <label>Password</label>
+      <input name="password" type="password" required minlength="6" />
+
+      <button class="btn" type="submit">Sign up</button>
+    </form>
+
+    <p class="auth-switch">
+      Already have an account?
+      <a href="/login">Sign in</a>
+    </p>
+  </div>
+` }) %>

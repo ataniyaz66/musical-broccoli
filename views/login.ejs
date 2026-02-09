@@ -1,14 +1,22 @@
 <%- include('layout', { body: `
   <div class="card wide">
     <h2>Login</h2>
+
     ${error ? `<div class="alert">${error}</div>` : ``}
 
     <form method="POST" action="/login" class="form">
       <label>Username</label>
       <input name="username" required />
+
       <label>Password</label>
       <input name="password" type="password" required />
+
       <button class="btn" type="submit">Sign in</button>
     </form>
+
+    <p class="auth-switch">
+      Don’t have an account?
+      <a href="/register">Sign up</a>
+    </p>
   </div>
 ` }) %>
