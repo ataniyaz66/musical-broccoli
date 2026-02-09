@@ -1,0 +1,16 @@
+<head>
+    <title><%= title %> | Music Hub</title>
+    <link rel="stylesheet" href="/public/styles.css">
+</head>
+<h1>Contact Us</h1>
+<form action="/contact" method="POST">
+  <input type="text" name="name" placeholder="Your Name" required />
+  <input type="email" name="email" placeholder="Your Email" required />
+  <textarea name="message" placeholder="Message"></textarea>
+  <button type="submit">Send</button>
+</form>
+<a href="/">Home</a>
+<a href="/songs">Songs</a>
+<a href="/add-song">Add Song</a>
+<a href="/about">About</a>
+<a href="/contact">Contact</a>
