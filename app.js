@@ -7,6 +7,8 @@ const { body, validationResult } = require("express-validator");
 require("dotenv").config();
 
 const app = express();
+app.set("trust proxy", 1); // ✅ IMPORTANT for Render/HTTPS behind proxy
+
 const PORT = process.env.PORT || 3000;
 
 // middleware
@@ -31,7 +33,7 @@ connectDB().catch((e) => {
   process.exit(1);
 });
 
-// sessions
+// sessions (cookie stores ONLY session id)
 app.use(
   session({
     name: "sid",
@@ -42,14 +44,14 @@ app.use(
       mongoUrl: process.env.MONGO_URI,
       dbName: "music-hub",
       collectionName: "sessions",
-      ttl: 60 * 60 * 24 * 7
+      ttl: 60 * 60 * 24 * 7, // 7 days
     }),
     cookie: {
-      httpOnly: true, // required
-      secure: process.env.NODE_ENV === "production", // recommended
+      httpOnly: true,        // ✅ required
+      secure: "auto",        // ✅ works on Render (HTTPS via proxy)
       sameSite: "lax",
-      maxAge: 1000 * 60 * 60 * 24 * 7
-    }
+      maxAge: 1000 * 60 * 60 * 24 * 7,
+    },
   })
 );
 
@@ -90,7 +92,7 @@ app.post(
     body("genre").trim().isLength({ min: 1, max: 60 }).withMessage("Genre is required"),
     body("year").optional({ checkFalsy: true }).isInt({ min: 1900, max: 2100 }).withMessage("Year must be valid"),
     body("durationSec").optional({ checkFalsy: true }).isInt({ min: 1, max: 3600 }).withMessage("Duration must be valid"),
-    body("language").trim().isLength({ min: 1, max: 40 }).withMessage("Language is required")
+    body("language").trim().isLength({ min: 1, max: 40 }).withMessage("Language is required"),
   ],
   async (req, res) => {
     const result = validationResult(req);
@@ -110,7 +112,7 @@ app.post(
       language: values.language,
       explicit: values.explicit === "on",
       createdAt: new Date(),
-      createdBy: req.session.user.username
+      createdBy: req.session.user.username,
     });
 
     res.redirect("/songs");
@@ -133,7 +135,7 @@ app.post(
     body("genre").trim().isLength({ min: 1, max: 60 }).withMessage("Genre is required"),
     body("year").optional({ checkFalsy: true }).isInt({ min: 1900, max: 2100 }).withMessage("Year must be valid"),
     body("durationSec").optional({ checkFalsy: true }).isInt({ min: 1, max: 3600 }).withMessage("Duration must be valid"),
-    body("language").trim().isLength({ min: 1, max: 40 }).withMessage("Language is required")
+    body("language").trim().isLength({ min: 1, max: 40 }).withMessage("Language is required"),
   ],
   async (req, res) => {
     const result = validationResult(req);
@@ -157,8 +159,8 @@ app.post(
           language: req.body.language,
           explicit: req.body.explicit === "on",
           updatedAt: new Date(),
-          updatedBy: req.session.user.username
-        }
+          updatedBy: req.session.user.username,
+        },
       }
     );
 
@@ -178,7 +180,7 @@ app.post(
   "/login",
   [
     body("username").trim().isLength({ min: 3, max: 30 }),
-    body("password").isLength({ min: 6, max: 200 })
+    body("password").isLength({ min: 6, max: 200 }),
   ],
   async (req, res) => {
     const result = validationResult(req);
@@ -193,7 +195,9 @@ app.post(
     if (!ok) return res.status(401).render("login", { error: "Invalid credentials" });
 
     req.session.user = { id: String(user._id), username: user.username, role: user.role || "user" };
-    res.redirect("/songs");
+
+    // ✅ ensure session is saved before redirect
+    req.session.save(() => res.redirect("/songs"));
   }
 );
 
@@ -217,7 +221,7 @@ app.post(
       .withMessage("Only letters, numbers, underscore allowed"),
     body("password")
       .isLength({ min: 6, max: 200 })
-      .withMessage("Password must be at least 6 characters")
+      .withMessage("Password must be at least 6 characters"),
   ],
   async (req, res) => {
     const result = validationResult(req);
@@ -225,8 +229,8 @@ app.post(
 
     if (!result.isEmpty()) {
       return res.status(400).render("register", {
-        error: result.array().map(e => e.msg).join(". "),
-        values
+        error: result.array().map((e) => e.msg).join(". "),
+        values,
       });
     }
 
@@ -237,16 +241,17 @@ app.post(
 
     const passwordHash = await bcrypt.hash(password, 10);
 
-    await db.collection("users").insertOne({
+    const inserted = await db.collection("users").insertOne({
       username,
       passwordHash,
       role: "user",
-      createdAt: new Date()
+      createdAt: new Date(),
     });
 
-    // auto login after signup
-    req.session.user = { username, role: "user" };
-    res.redirect("/songs");
+    req.session.user = { id: String(inserted.insertedId), username, role: "user" };
+
+    // ✅ ensure session is saved before redirect
+    req.session.save(() => res.redirect("/songs"));
   }
 );
 
