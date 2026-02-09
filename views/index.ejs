@@ -1,7 +1,10 @@
 <%- include('layout', { body: `
-<section class="hero">
-<h2>Welcome to MusicHub</h2>
-<p>Store and manage your music collection</p>
-<a href="/songs" class="btn">View Songs</a>
-</section>
+  <section class="hero">
+    <h1>Welcome to MusicHub</h1>
+    <p>Made by Mutigolla Ataniyaz SE-2437</p>
+    <div class="heroActions">
+      <a class="btn" href="/songs">Browse Songs</a>
+      ${user ? `<a class="btn ghost" href="/add">Add Song</a>` : `<a class="btn ghost" href="/login">Login</a>`}
+    </div>
+  </section>
 ` }) %>

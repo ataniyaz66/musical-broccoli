@@ -1,8 +1,42 @@
 <%- include('layout', { body: `
-<h2>Edit Song</h2>
-<form method="POST" action="/edit/${song._id}" class="card">
-<input name="title" value="${song.title}" required />
-<input name="artist" value="${song.artist}" required />
-<button>Save</button>
-</form>
+  <div class="card wide">
+    <h2>Edit Song</h2>
+
+    ${errors.length ? `<div class="alert">${errors.map(e=>e.msg).join("<br/>")}</div>` : ``}
+
+    <form method="POST" action="/edit/${song._id}" class="form">
+      <label>Title</label>
+      <input name="title" value="${song.title||""}" required />
+
+      <label>Artist</label>
+      <input name="artist" value="${song.artist||""}" required />
+
+      <label>Album</label>
+      <input name="album" value="${song.album||""}" required />
+
+      <label>Genre</label>
+      <input name="genre" value="${song.genre||""}" required />
+
+      <div class="row">
+        <div>
+          <label>Year</label>
+          <input name="year" type="number" value="${song.year ?? ""}" />
+        </div>
+        <div>
+          <label>Duration (sec)</label>
+          <input name="durationSec" type="number" value="${song.durationSec ?? ""}" />
+        </div>
+      </div>
+
+      <label>Language</label>
+      <input name="language" value="${song.language||""}" required />
+
+      <label class="checkbox">
+        <input type="checkbox" name="explicit" ${song.explicit ? "checked" : ""} />
+        Explicit
+      </label>
+
+      <button class="btn" type="submit">Save</button>
+    </form>
+  </div>
 ` }) %>
