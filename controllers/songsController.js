@@ -53,7 +53,7 @@ async function listSongs(req, res) {
       },
       { $unwind: { path: "$owner", preserveNullAndEmptyArrays: true } },
       { $addFields: { ownerName: { $ifNull: ["$owner.username", "Unknown"] } } },
-      { $project: { owner: 0, "owner.passwordHash": 0 } }
+      { $project: { owner: 0 } }
     ])
     .toArray();
 
