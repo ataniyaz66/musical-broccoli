@@ -1,6 +1,30 @@
 <%- include('layout', { body: `
   <h2 class="title">Songs Catalog</h2>
 
+  <form method="GET" action="/songs" class="filter-bar">
+    <input type="text" name="search" placeholder="Search by title or artist..." value="${search || ""}" />
+
+    <select name="sort">
+      <option value="createdAt" ${sortField==="createdAt" ? "selected" : ""}>Newest</option>
+      <option value="title" ${sortField==="title" ? "selected" : ""}>Title</option>
+      <option value="year" ${sortField==="year" ? "selected" : ""}>Year</option>
+    </select>
+
+    <select name="order">
+      <option value="desc" ${order==="desc" ? "selected" : ""}>Descending</option>
+      <option value="asc" ${order==="asc" ? "selected" : ""}>Ascending</option>
+    </select>
+
+    ${user ? `
+      <label class="checkbox smallcheck">
+        <input type="checkbox" name="myOnly" value="1" ${myOnly ? "checked" : ""} />
+        My songs only
+      </label>
+    ` : ``}
+
+    <button class="btn small" type="submit">Apply</button>
+  </form>
+
   <div class="grid">
     ${songs.map(s => `
       <div class="card">
@@ -10,6 +34,11 @@
         </div>
 
         <p class="muted">${s.artist} • ${s.album}</p>
+
+        <p class="meta">
+          Added by: <b>${s.ownerName || "Unknown"}</b>
+        </p>
+
         <p class="meta">
           ${s.year ?? "—"} • ${s.durationSec ? s.durationSec + "s" : "—"} • ${s.language || "—"}
           ${s.explicit ? " • Explicit" : ""}
@@ -18,14 +47,31 @@
         ${user ? `
           <div class="actions">
             <a class="btn small" href="/edit/${s._id}">Edit</a>
-            <form method="POST" action="/delete/${s._id}">
-              <button class="btn small danger" type="submit">Delete</button>
-            </form>
+
+            ${user.role === "admin" ? `
+              <form method="POST" action="/delete/${s._id}">
+                <button class="btn small danger" type="submit">Delete</button>
+              </form>
+            ` : ``}
           </div>
         ` : `
           <div class="alert small">Login to add/edit/delete</div>
         `}
       </div>
     `).join("")}
+  </div>
+
+  <div class="pagination">
+    ${currentPage > 1
+      ? `<a class="page-link" href="?page=${currentPage-1}&search=${encodeURIComponent(search||"")}&sort=${sortField}&order=${order}${myOnly ? "&myOnly=1" : ""}">Prev</a>`
+      : `<span class="page-link disabled">Prev</span>`
+    }
+
+    <span class="page-info">Page ${currentPage} of ${totalPages}</span>
+
+    ${currentPage < totalPages
+      ? `<a class="page-link" href="?page=${currentPage+1}&search=${encodeURIComponent(search||"")}&sort=${sortField}&order=${order}${myOnly ? "&myOnly=1" : ""}">Next</a>`
+      : `<span class="page-link disabled">Next</span>`
+    }
   </div>
 ` }) %>
